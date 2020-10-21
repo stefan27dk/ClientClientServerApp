@@ -8,61 +8,72 @@ namespace ClientClientServerApp
     class Program
     {
 
-        public static NetworkStream stm;
-        public static BinaryReader reader;
-        public static BinaryWriter writer;
+        public static NetworkStream NetStream;
+        public static BinaryReader Reader;
+        public static BinaryWriter Writer;
 
 
         static void Main(string[] args)
         {
             try
             {
+                // Connection-Settings--------------------------------------
                 TcpClient tcpclnt = new TcpClient();
                 Console.WriteLine("Connecting.....");
-                tcpclnt.Connect("127.0.0.1", 8001);     // use the ipaddress as
-                                                        // in the server program
+                tcpclnt.Connect("127.0.0.1", 8001);  // Server IP - Adress                   
                 Console.WriteLine("Connected");
-                stm = tcpclnt.GetStream();
-                reader = new BinaryReader(stm);
-                writer = new BinaryWriter(stm);
 
-                // Lidt Nyt kode til klienten
-                Thread t = new Thread(new ThreadStart(VisInput));
-                t.Start();
-                string str = "s";
-                while (str != "")
+                // Stream-Settings-----------------------------------------------
+                NetStream = tcpclnt.GetStream();
+
+                // Initialize Reader & Writer for the stream
+                Reader = new BinaryReader(NetStream);
+                Writer = new BinaryWriter(NetStream);
+
+                // Listener for Server -- Talking to Client
+                new Thread(()=> ListenForServerOutput()).Start();
+                 
+                string clientBid = "No";
+                while (true)
                 {
-                    Console.Write("Enter the string to be transmitted : ");
-                    str = Console.ReadLine();
-                    Console.WriteLine("Transmitting.....");
-                    writer.Write(str);
-                    Console.WriteLine("data sent...");
-                    //nedenstaaende lжseoperationer er flyttet til en seperat
-                    //traad der haandterer lesning fra ALLE klienterne
-                    //string txt = reader.ReadString();
-                    //Console.WriteLine(txt + " received");
-                }
+                    Console.Write("Enter Bid: ");
+                    clientBid = Console.ReadLine();
+                    
+                    Console.WriteLine(Environment.NewLine + "Sending..... ");
+                    if(!string.IsNullOrWhiteSpace(clientBid))
+                    { 
+                     Writer.Write(clientBid); // Send To Server
+                    }
+                    else
+                    {
+                        Console.WriteLine("Wrong Input");
+                    }
+                    Console.WriteLine("Data Sent" + Environment.NewLine);     
+                }  
+
                 tcpclnt.Close();
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error..... " + e.StackTrace);
+                Environment.Exit(0);
             }
         }
 
-        public static void VisInput()
+
+        // Server Output -- Server Talking to Client--||Method||-------------------------------------------------------
+        public static void ListenForServerOutput()
         {
             string txt = "";
             while (true)
             {
                 try
                 {
-                    txt = reader.ReadString();
+                    txt = Reader.ReadString(); // Read Server Output to Client
                     Console.WriteLine(txt);
                 }
                 catch
                 {
-                    Console.WriteLine("Logger af...");
+                    Console.WriteLine("Closing...");
                     break;
                 }
             }
